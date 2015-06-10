@@ -36,18 +36,24 @@ def match_index(index, code, reverse=False, chars=("[", "]")):
     return None
 
 def eval(code, mem=Memory(), cmd_index=0):
+    output = ""
     while cmd_index < len(code):
         cmd = code[cmd_index]
         if cmd == ">":
             mem.ptr += 1
         elif cmd == "<":
             mem.ptr -= 1
+            if mem.ptr < 0: 
+                mem.ptr = 0
         elif cmd == "+":
             mem.loc += 1
+            if mem.ptr >= len(mem.memory):
+                mem.ptr = len(mem.memory) - 1
         elif cmd == "-":
             mem.loc -= 1
         elif cmd == ".":
             print(chr(mem.loc), end="")
+            output += chr(mem.loc)
         elif cmd == ",":
             mem.loc = ord(sys.stdin.read(1))
         elif cmd == "[":
@@ -61,6 +67,7 @@ def eval(code, mem=Memory(), cmd_index=0):
             raise SyntaxError("No matching bracket")
 
         cmd_index += 1
+    return output
 
 def all_matched(code, chars=("[", "]")):
     nest_count = 0
@@ -79,7 +86,8 @@ def repl():
         if not all_matched(code):
             while not all_matched(code):
                 code += input("..| ")
-        eval(code, mem)
+        output = eval(code, mem)
+        if output: print()
 
 if __name__ == "__main__":
     try:
