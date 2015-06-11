@@ -9,6 +9,17 @@ def naive_encode(string):
     result += "[.>]"
     return result
 
+def one_register_encode(string):
+    chars = map(ord, string)
+    num = 0
+    result = ""
+    for c in chars:
+        op = "-" if c < num else "+"
+        result += op * abs(c - num)
+        result += "."
+        num = c
+    return result
+
 def loop_encode(string):
     result = ""
     if string[-1] != "\n":
@@ -36,3 +47,4 @@ def loop_encode(string):
         result += "<" * last_index
     result += ">[.>]"
     return result
+
