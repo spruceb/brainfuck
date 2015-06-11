@@ -35,7 +35,36 @@ def match_index(index, code, reverse=False, chars=("[", "]")):
                 return i
     return None
 
+def remove_pairs(string, pair):
+    result = []
+    count = [0,0]
+    pair_seq = False
+    def end_seq():
+        if count == [0, 0]: return
+        most_in_seq = pair[0 if count[0] > count[1] else 1]
+        diff = abs(count[0] - count[1])
+        result.append(most_in_seq * diff)
+        count[0] = count[1] = 0
+    for c in string:
+        if c not in pair:
+            if pair_seq:
+                end_seq()
+                pair_seq = False
+            result += c
+        else:
+            count[pair.index(c)] += 1
+            pair_seq = True
+    end_seq()
+    return "".join(result)
+
+
+def minimize(brainfuck):
+    brainfuck = remove_pairs(brainfuck, ("+", "-"))
+    brainfuck = remove_pairs(brainfuck, (">", "<"))
+    return brainfuck
+
 def eval(code, mem=Memory(), cmd_index=0):
+    code = minimize(code)
     output = ""
     while cmd_index < len(code):
         cmd = code[cmd_index]

@@ -1,4 +1,5 @@
 import itertools
+from brainfuck import minimize
 def naive_encode(string):
     result = ""
     for c in string:
@@ -46,5 +47,4 @@ def loop_encode(string):
             last_index = c[0]
         result += "<" * last_index
     result += ">[.>]"
-    return result
-
+    return minimize(result)
