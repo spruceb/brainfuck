@@ -1,5 +1,6 @@
 #!/usr/local/bin/python3
 import sys
+import readline
 
 class Memory:
     def __init__(self):
@@ -119,12 +120,12 @@ def repl():
         if output: print()
 
 if __name__ == "__main__":
-    try:
+    if len(sys.argv) > 1:
         filename = sys.argv[1]
-    except IndexError as e:
-        print("Entering Brainfuck REPL...")
-        repl()
-    else:
         with open(filename, "r") as program_file:
             code = program_file.read()
             eval(code)
+    else:
+        print("Entering Brainfuck REPL...")
+        repl()
+        

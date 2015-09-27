@@ -1,5 +1,6 @@
 import itertools
 from brainfuck import minimize
+
 def naive_encode(string):
     result = ""
     for c in string:
@@ -48,3 +49,18 @@ def loop_encode(string):
         result += "<" * last_index
     result += ">[.>]"
     return minimize(result)
+
+def optimized_encode(string):
+    result = ""
+    chars = list(enumerate(map(ord, string)))
+    lowest = min(chars, key=lambda x: x[1])
+    length = len(chars)
+    result += "+" * length
+    result += "[->>[>]+[<]<]"
+    result += "+" * lowest
+    result += "[->>[+>]<[<]<]"
+
+
+
+
+print(loop_encode("You should check out brainfuck"))
