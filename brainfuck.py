@@ -2,6 +2,7 @@
 import sys
 import readline
 
+CELL_SIZE = 2 ** 32 # 32 bit unsigned registers
 class Memory:
     def __init__(self):
         self.memory = [0] * 30000
@@ -11,7 +12,7 @@ class Memory:
         return self.memory[self.ptr]
     @loc.setter
     def loc(self, value):
-        self.memory[self.ptr] = value
+        self.memory[self.ptr] = value % CELL_SIZE
     def __repr__(self):
         output = ""
         end = max(self.ptr, ([0] + [i for i, d in enumerate(self.memory) if d != 0])[-1])
