@@ -28,6 +28,7 @@ arguments, meaning they zero that cell then add the current one into it.
 import itertools as it
 import sys
 import brainfuck
+from brainfuck import Memory
 OLD_TOKENS = ['+', '-', '<', '>', '[', ']', ',', '.']
 EXTENDED_TOKENS = ['=']
 # These token family dictionaries define mappings from the new commands
@@ -40,13 +41,23 @@ EXTENDED_TOKENS = ['=']
 # translation, repeated compiling of the code until it no longer
 # changes. This works because everything bottoms out in original
 # commands eventually.
-TOKEN_FAMILIES = {'a': {'f': '[->\*+<\*]', 'b': '[-<\*+>\*]'},
-                  's': {'f': '[->\*-<\*]', 'b': '[-<\*->\*]'},
-                  'm': {'f': '>\*[-]<\*af\*', 'b': '<\*[-]>\*ab\*'}}
+TOKEN_FAMILIES = {
+    'a': {
+        'f': '[->\*+<\*]',
+        'b': '[-<\*+>\*]'
+    },
+    's': {
+        'f': '[->\*-<\*]',
+        'b': '[-<\*->\*]'
+    },
+    'm': {
+        'f': '>\*[-]<\*af\*',
+        'b': '<\*[-]>\*ab\*'}
+}
 
 def fixed_point_translation(s):
     '''Recursively compile the code until it no longer changes
-    
+
     As described above several of the BF Alpha definitions use other
     BF Alpha features. However they do all bottom out in pure brainfuck,
     so it only takes a few iterations of compiling to get there.
@@ -98,7 +109,7 @@ def translate(s):
             i = index
         else: i += 1 # ignore non-valid characters
 
-def eval(code, mem=brainfuck.Memory(), cmd_index=0):
+def eval(code, mem=Memory(), cmd_index=0):
     '''Compile BF Alpha code to brainfuck and run it'''
     result = ''.join(translate(code))
     return brainfuck.eval(result, mem, cmd_index)
@@ -108,7 +119,7 @@ all_matched = brainfuck.all_matched
 
 def repl():
     '''REPL for Brainfuck Alpha code'''
-    mem = brainfuck.Memory()
+    mem = Memory()
     while True:
         print(mem)
         code = input("| ")
@@ -117,7 +128,7 @@ def repl():
                 code += input("..| ")
         output = eval(code, mem)
         if output: print()
-        
+
 if __name__ == "__main__":
     if len(sys.argv) > 1:
         filename = sys.argv[1]
