@@ -24,6 +24,7 @@ the cell array. The commands are:
 import sys
 import readline
 import itertools as it
+from functools import reduce
 
 # max value to be stored in a cell
 CELL_SIZE = 2 ** 32
@@ -48,9 +49,12 @@ class Memory:
 
     def __repr__(self):
         # gets max of the pointer location and the last non-zero
-        last_nonzero = reduce(lambda x, y: y, # the reduce gets last item
-            it.takewhile(lambda pair: pair[0], enumerate(self.memory)))
-        end = max(self.ptr, last_nonzero[0] or 0)
+        last_nonzero = reduce(
+            lambda x, y: y, # the reduce gets last item
+            it.takewhile(lambda pair: not pair[1],
+                         reversed(list(enumerate(self.memory)))),
+            [0])
+        end = max(self.ptr, last_nonzero[0] - 1  or 0)
         output = ''.join(
             (' *{}* ' if i == self.ptr else ' {} ').format(data)
                 for i, data in enumerate(self.memory[:end + 1]))
