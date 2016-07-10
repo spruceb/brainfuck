@@ -1,125 +1,124 @@
+'''Brainfuck Beta compiler and REPL
+
+Language spec:
+This is just a Lisp (really s-expression) version of BF Alpha, in
+preparation for further improvements. All of the previous commands
+are the same, although some are renamed. Arguments are now passed as
+in Lisp, so:
+
+    (+ 2) is +2
+
+and so on.
+
++, -, <, and > remain the same.
+`,` is now `input`.
+`.` is now `output`.
+`af` and `ab` are now both part of `add!-relative`, which can perform
+    both functionalities based on its arguments.
+The same is true for `s` and `m`, now `sub!-relative` and move-relative`
+The exclamation points mark "mutating" functions, as in Common Lisp.
+    Specifically functions that "move" the current cell's value.
+`=` is `set-to`.
+`[` and `]` are replaced with `while-n-0`, which is just the same as
+    enclosing its argument (which is code) in a `[]` pair.
+'''
 import itertools as it
 import sys
 import bf_alpha
+from bf_alpha import Memory
+from lisp_core import listify, Atom, ConsCell, lisp_parse, progn, all_matched
 from functools import reduce
 
-FUNCTIONS = {'+': '+', '-': '-', '>': '>', '<': '<', 'while-n-0': None, 'input': ',',
-             'output': '.', 'add!-relative': 'a', 'sub!-relative': 's', 'move-relative': 'm',
-             'set-to': '=',
+CORE_FUNCTIONS = {
+    '+': '+',
+    '-': '-',
+    '>': '>',
+    '<': '<',
+    'while-n-0': None,
+    'input': ',',
+    'output': '.',
+    'add!-relative': 'a',
+    'sub!-relative': 's',
+    'move-relative': 'm',
+    'set-to': '='
 }
 
-class Atom:
-    def __init__(self, string):
-        self.string = string
-    def __str__(self):
-        return self.string
-    def __repr__(self):
-        return 'Atom("{}")'.format(self.string)
-    def __eq__(self, other):
-        if type(other) is Atom: return self.string == other.string
-        return self.string == other
+# Functions that require an extra argument to specify the direction they
+# work in. So af and ab, etc.
+DIRECTIONAL_FUNCTIONS = {
+    'add!-relative',
+    'sub!-relative',
+    'move-relative'
+}
 
-class ConsCell:
-    def __init__(self, first, second):
-        self.car = first
-        self.cdr = second
-    def isnull(self):
-        return self.car is None and self.cdr is None
-    def __str__(self):
-        if self.isnull(): return '()'
-        elif type(self.cdr) is not ConsCell:
-            return '({} . {})'.format(self.car, self.cdr)
-        elif self.cdr.isnull():
-            return '({})'.format(self.car)
-        else:
-            return '({} {}'.format(self.car, str(self.cdr)[1:])
-        
-    def __repr__(self):
-        return 'Cell({}, {})'.format(repr(self.car), repr(self.cdr))
-    
-def matching_paren(string, index):
-    assert(string[index] == '(')
-    count = 1
-    for i, c in enumerate(string[index + 1:]):
-        if c == '(': count += 1
-        elif c == ')': count -= 1
-        if count == 0: return i + index + 1 
+# Functions that don't take any arguments
+NO_ARGUMENT_FUNCTIONS = {
+    '.',
+    ','
+}
 
-def paren_split(string):
-    string = string.strip()
-    assert(string[0] == '(' and string[-1] == ')')
-    string = string[1:-1]
-    while len(string) > 0:
-        if string[0] == '(':
-            close = matching_paren(string, 0)
-            yield string[:close + 1]
-            string = string[close + 1:]
-        else:
-            partition = string.partition(' ')
-            yield partition[0]
-            string = partition[2]
-        string = string.strip()
-    
-def lisp_parse(s, delim=('()')):
-    s = s.replace('\n', ' ')
-    s = s.replace('\t', ' ')
-    s = s.strip()
-    if s.replace(' ', '') == '()':
-        return ConsCell(None, None)
-    elif s[0] != '(':
-        return Atom(s)
-    else:
-        tokens = list(paren_split(s))
-        return reduce(lambda x, y: ConsCell(lisp_parse(y), x),
-                      reversed(tokens), ConsCell(None, None))
-def listify(parse_tree):
-   while not parse_tree.isnull():
-       yield parse_tree.car
-       parse_tree = parse_tree.cdr
-def progn(parse_tree):
-    return ConsCell(Atom('progn'), parse_tree)
 
 def compile(parse_tree):
-    if type(parse_tree.car) is Atom and parse_tree.car == "progn":
-        parse_tree = parse_tree.cdr
-        for node in listify(parse_tree):
-            yield from compile(node)
-    elif parse_tree.car.string in FUNCTIONS:
-        f = parse_tree.car.string
-        if f in '+-><':
-            args = list(listify(parse_tree.cdr))
-            if len(args) == 0: arg = '1'
-            else: arg = args[0].string
-            yield FUNCTIONS[f] + arg
-        elif f == 'input': yield functions
-        elif f == 'output': yield '.'
-        elif f == 'set-to':
-            args = list(listify(parse_tree.cdr))
-            yield '=' + args[0].string
-        elif f in ('add!-relative', 'sub!-relative', 'move-relative'):
-            args = list(listify(parse_tree.cdr))
-            if len(args) == 0: arg = '1'
-            else: arg = int(args[0].string)
-            if arg > 0:
-                yield FUNCTIONS[f] + 'f' + str(arg)
+    '''Compile an AST of lisp-like BF Beta to BF Alpha
+    
+    For the most part performing simple translations from the
+    `CORE_FUNCTIONS` dict.
+    '''
+    print(parse_tree)
+    if isinstance(parse_tree.car, Atom):
+        # the first item in a "code" s-exp should be the called function
+        # since this isn't a true lisp there's no way for another s-exp
+        # to evaluate to a function
+        function = parse_tree.car.string
+        if function == 'progn':
+            # if the function is `progn`, just evaluate every statement
+            # in the body individually
+            parse_tree = parse_tree.cdr
+            for node in listify(parse_tree):
+                yield from compile(node)
+        elif function in CORE_FUNCTIONS:
+            if function == 'while-n-0':
+                # while-n-0 just creates a normal brainfuck loop around
+                # its body. The body is given the same as `progn`, and
+                # is wrapped in it (as that's the only way to do code
+                # blocks in BF Beta)
+                yield '['
+                yield from compile(progn(parse_tree.cdr))
+                yield ']'
+            elif function in NO_ARGUMENT_FUNCTIONS:
+                yield CORE_FUNCTIONS[function]
             else:
-                yield FUNCTIONS[f] + 'b' + str(abs(arg))
-        elif f == 'while-n-0':
-            yield '['
-            yield from compile(progn(parse_tree.cdr))
-            yield ']'
+                # All other functions do take an argument
+                args = list(listify(parse_tree.cdr))
+                arg = args[0].string if len(args) > 0 else '1'
+                result_function = CORE_FUNCTIONS[function]
+                modifier = ''
+                if function in DIRECTIONAL_FUNCTIONS:
+                    # forward if the argument is positive, backwards if
+                    # it's negative. BF Alpha arguments are always
+                    # positive though, so they are converted
+                    modifier = 'f' if int(arg) > 0 else 'b'
+                    arg = str(abs(int(arg)))
+                yield CORE_FUNCTIONS[function] + modifier + arg 
     else:
         raise RuntimeError('Unknown function: {}'.format(parse_tree.car))
 
+
 def eval(code, mem):
-    compilation = ''.join(compile(lisp_parse(code)))
+    '''Parse code into a cons-cell tree structure, then evaluate it'''
+    parse_tree = lisp_parse(code)
+    return eval_tree(parse_tree, mem)
+
+
+def eval_tree(parse_tree, mem):
+    '''Get the compiled BF Alpha code from the parse_tree and run it'''
+    compilation = ''.join(compile(parse_tree))
     return bf_alpha.eval(compilation, mem)
 
-def all_matched(code):
-    return bf_alpha.brainfuck.all_matched(code, '()')
 
 def repl():
-    mem = bf_alpha.brainfuck.Memory()
+    '''REPL Brainfuck Beta code'''
+    mem = Memory()
     while True:
         print(mem)
         code = input("| ")
@@ -127,8 +126,9 @@ def repl():
             while not all_matched(code):
                 code += input("..| ")
         output = eval(code, mem)
-        if output: print()
-        
+        if output:
+            print()
+
 if __name__ == "__main__":
     if len(sys.argv) > 1:
         filename = sys.argv[1]
